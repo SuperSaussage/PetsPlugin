@@ -1,0 +1,50 @@
+name: Build & Publish Plugin JAR
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'   # Trigger workflow on tags like v1.0.0
+
+jobs:
+  build_and_release:
+    name: Build and Publish
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Check out the repository
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Step 2: Set up Java (use the JDK version your plugin targets)
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      # Step 3: Build with Maven
+      - name: Build plugin JAR
+        run: mvn clean package -DskipTests
+
+      # Step 4: Create a GitHub release
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref_name }}
+          release_name: Release ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+
+      # Step 5: Upload the compiled JAR to the release
+      - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: target/PetsPlugin.jar
+          asset_name: PetsPlugin-${{ github.ref_name }}.jar
+          asset_content_type: application/java-archive
